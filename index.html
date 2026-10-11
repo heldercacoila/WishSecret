@@ -370,6 +370,24 @@
           <textarea id="item-notes" rows="2" placeholder="Ex: Tamanho M, cor preta ou cinzenta" class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 bg-slate-50/50 resize-none"></textarea>
         </div>
 
+        <!-- GRUPO DE ALTERNATIVAS (OPCIONAL: APENAS 1 DESTE GRUPO) -->
+        <div class="space-y-1.5 p-3 rounded-2xl bg-indigo-50/60 border border-indigo-100">
+          <div class="flex items-center justify-between">
+            <label class="block text-xs font-bold text-slate-800 flex items-center gap-1.5" for="item-group">
+              <i data-lucide="layers" class="w-3.5 h-3.5 text-indigo-600"></i>
+              <span>Grupo de Alternativas (Opcional)</span>
+            </label>
+            <span class="text-[10px] font-bold text-indigo-700 bg-white border border-indigo-200/80 px-2 py-0.5 rounded-md shadow-2xs">Apenas 1 prenda</span>
+          </div>
+          <div class="relative">
+            <input type="text" id="item-group" list="existing-groups-list" placeholder="Ex: Garrafas, Ténis, Mochilas..." class="w-full px-3.5 py-2 text-xs rounded-xl border border-indigo-200 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 bg-white">
+            <datalist id="existing-groups-list"></datalist>
+          </div>
+          <p class="text-[11px] text-slate-500 leading-snug">
+            Tens 2 ou mais opções do mesmo género? Dá-lhes o mesmo nome de grupo. Quando um amigo reservar uma opção, as outras ficam <strong>automaticamente bloqueadas</strong> para não receberes prendas repetidas!
+          </p>
+        </div>
+
         <!-- FOTO DO PRODUTO: UPLOAD DO TELEMOVEL/PC, COLAR PRINT (CTRL+V) OU URL -->
         <div class="space-y-2 pt-2 border-t border-slate-100">
           <label class="block text-xs font-semibold text-slate-700">Foto do Produto (Telemóvel, Computador, Print ou Link)</label>
@@ -1134,10 +1152,32 @@
       emptyState.classList.add('hidden');
       const myBrowserId = getBrowserGuestId();
 
+      // Mapear grupos de alternativas onde já existe uma reserva ativa (Apenas para convidados)
+      const reservedGroups = {};
+      if (!AppState.isOwner && AppState.reservations) {
+        Object.keys(AppState.reservations).forEach(resId => {
+          const res = AppState.reservations[resId];
+          const it = items.find(i => i.id === resId);
+          if (it && it.alternativeGroup && it.alternativeGroup.trim()) {
+            const key = it.alternativeGroup.trim().toLowerCase();
+            reservedGroups[key] = {
+              reservedItemId: resId,
+              reservedItemTitle: it.title,
+              reservedBy: res.reservedBy || 'outro amigo',
+              guestBrowserId: res.guestBrowserId
+            };
+          }
+        });
+      }
+
       grid.innerHTML = filtered.map(item => {
         const isReserved = !AppState.isOwner && AppState.reservations && AppState.reservations[item.id];
         const reservationInfo = isReserved ? AppState.reservations[item.id] : null;
         const isReservedByMe = isReserved && reservationInfo && reservationInfo.guestBrowserId === myBrowserId;
+
+        // Verificar se outra opção deste grupo de alternativas já foi reservada
+        const itemGroupKey = (item.alternativeGroup && item.alternativeGroup.trim()) ? item.alternativeGroup.trim().toLowerCase() : null;
+        const siblingReservedInfo = (!isReserved && itemGroupKey && reservedGroups[itemGroupKey]) ? reservedGroups[itemGroupKey] : null;
 
         // Imagem ou Placeholder
         const imageMarkup = item.image 
@@ -1203,6 +1243,16 @@
                 </div>
               `;
             }
+          } else if (siblingReservedInfo) {
+            // Outra opção deste grupo já foi escolhida!
+            actionsMarkup = `
+              <div class="pt-3 border-t border-slate-100">
+                <div class="w-full py-2.5 px-3 rounded-xl bg-amber-50 text-amber-900 border border-amber-200/90 text-xs font-semibold flex items-center justify-center gap-1.5 text-center leading-tight shadow-2xs" title="Outra opção do grupo '${escapeHtml(item.alternativeGroup)}' já foi reservada">
+                  <i data-lucide="check-check" class="w-4 h-4 text-amber-600 shrink-0"></i>
+                  <span>Opção deste grupo já escolhida</span>
+                </div>
+              </div>
+            `;
           } else {
             actionsMarkup = `
               <div class="pt-3 border-t border-slate-100">
@@ -1269,6 +1319,14 @@
                     ${budgetLabels[item.budgetCategory] || 'Geral'}
                   </span>
                 </div>
+                ${item.alternativeGroup ? `
+                  <div class="absolute top-2.5 left-2.5 flex flex-col gap-1">
+                    <span class="px-2 py-0.5 rounded-md text-[10px] font-bold ${siblingReservedInfo ? 'bg-amber-600 text-white' : 'bg-indigo-600 text-white'} shadow-xs flex items-center gap-1">
+                      <i data-lucide="${siblingReservedInfo ? 'lock' : 'layers'}" class="w-3 h-3"></i>
+                      <span>${escapeHtml(item.alternativeGroup)}${siblingReservedInfo ? ' (Escolhido)' : ''}</span>
+                    </span>
+                  </div>
+                ` : ''}
                 ${itemLinks.length > 0 ? `
                   <div class="absolute bottom-2.5 right-2.5">
                     <a href="${itemLinks[0].url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/95 backdrop-blur-xs text-slate-900 hover:text-brand-600 font-bold text-xs shadow-md border border-slate-200/80 hover:scale-105 transition-all" title="${itemLinks.length > 1 ? `Ver ${itemLinks.length} opções de compra` : 'Ver na Loja'}">
@@ -1284,9 +1342,17 @@
                   <h4 class="font-bold text-slate-900 text-base leading-snug line-clamp-2">${escapeHtml(item.title)}</h4>
                 </div>
 
-                <div class="flex items-baseline gap-1">
-                  <span class="text-lg font-extrabold text-brand-600 tracking-tight">${Number(item.price).toFixed(2)}€</span>
-                  <span class="text-[11px] text-slate-400 font-medium">aprox.</span>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <div class="flex items-baseline gap-1">
+                    <span class="text-lg font-extrabold text-brand-600 tracking-tight">${Number(item.price).toFixed(2)}€</span>
+                    <span class="text-[11px] text-slate-400 font-medium">aprox.</span>
+                  </div>
+                  ${item.alternativeGroup ? `
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-[10px] font-bold border border-indigo-200/60" title="Grupo alternativo: apenas 1 presente deste grupo será oferecido">
+                      <i data-lucide="layers" class="w-3 h-3 text-indigo-500"></i>
+                      <span>Grupo: ${escapeHtml(item.alternativeGroup)}</span>
+                    </span>
+                  ` : ''}
                 </div>
 
                 ${item.notes ? `
@@ -1579,13 +1645,28 @@
       addStoreLinkRow('', '');
     });
 
+    // Atualizar opções do datalist com os grupos já existentes na lista
+    function updateDatalistGroups() {
+      const datalist = document.getElementById('existing-groups-list');
+      if (!datalist) return;
+      const groups = new Set();
+      (AppState.currentList?.items || []).forEach(i => {
+        if (i.alternativeGroup && i.alternativeGroup.trim()) {
+          groups.add(i.alternativeGroup.trim());
+        }
+      });
+      datalist.innerHTML = Array.from(groups).map(g => `<option value="${escapeHtml(g)}">`).join('');
+    }
+
     // Abrir Modal de Adicionar Item
     document.getElementById('btn-open-add-modal').addEventListener('click', () => {
       document.getElementById('form-item').reset();
       document.getElementById('item-edit-id').value = '';
+      document.getElementById('item-group').value = '';
       document.getElementById('modal-item-title').textContent = "Adicionar Desejo";
       hideImagePreview();
       renderStoreLinkInputs([{ url: '', label: '' }]);
+      updateDatalistGroups();
       document.getElementById('modal-item').classList.remove('hidden');
     });
 
@@ -1598,6 +1679,7 @@
       const budgetCategory = document.getElementById('item-budget').value;
       const storeLinks = getStoreLinksFromForm();
       const primaryUrl = storeLinks.length > 0 ? storeLinks[0].url : '';
+      const alternativeGroup = document.getElementById('item-group').value.trim();
       const notes = document.getElementById('item-notes').value.trim();
       const image = AppState.tempImageData;
 
@@ -1606,8 +1688,9 @@
         title,
         price,
         budgetCategory,
-        url: primaryUrl,      // Mantido para compatibilidade retroativa
-        urls: storeLinks,     // Lista completa de links de lojas
+        url: primaryUrl,                          // Mantido para compatibilidade retroativa
+        urls: storeLinks,                         // Lista completa de links de lojas
+        alternativeGroup: alternativeGroup || '', // Grupo de alternativas exclusivas (apenas 1 oferta)
         notes,
         image,
         updatedAt: new Date().toISOString()
@@ -1631,8 +1714,10 @@
       document.getElementById('item-title').value = item.title;
       document.getElementById('item-price').value = item.price;
       document.getElementById('item-budget').value = item.budgetCategory;
+      document.getElementById('item-group').value = item.alternativeGroup || '';
       document.getElementById('item-notes').value = item.notes || '';
       document.getElementById('modal-item-title').textContent = "Editar Desejo";
+      updateDatalistGroups();
 
       // Carregar links de lojas existentes
       let currentLinks = [];
