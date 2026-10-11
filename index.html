@@ -213,8 +213,8 @@
         </div>
         <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           <button id="btn-banner-edit-list" class="whitespace-nowrap px-3.5 py-2.5 rounded-xl bg-brand-700/80 hover:bg-brand-700 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-1.5 active:scale-95 border border-brand-400/40">
-            <i data-lucide="edit-3" class="w-4 h-4"></i>
-            <span>Mudar Nome da Lista</span>
+            <i data-lucide="settings" class="w-4 h-4"></i>
+            <span>Editar Lista & PIN</span>
           </button>
           <button id="btn-open-add-modal" class="whitespace-nowrap px-4 py-2.5 rounded-xl bg-white text-brand-700 hover:bg-brand-50 font-bold text-xs shadow-sm transition-all flex items-center gap-2 active:scale-95">
             <i data-lucide="plus" class="w-4 h-4"></i>
@@ -536,11 +536,11 @@
       <div class="flex items-center justify-between pb-3 border-b border-slate-100">
         <div class="flex items-center gap-2.5">
           <div class="w-9 h-9 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center">
-            <i data-lucide="edit-3" class="w-5 h-5"></i>
+            <i data-lucide="settings" class="w-5 h-5"></i>
           </div>
           <div>
-            <h3 class="text-base font-bold text-slate-900 leading-tight">Mudar Nome da Lista</h3>
-            <span class="text-[11px] text-slate-400">Personaliza o título e mensagem da tua lista</span>
+            <h3 class="text-base font-bold text-slate-900 leading-tight">Editar Lista & Definições</h3>
+            <span class="text-[11px] text-slate-400">Personaliza o título, mensagem e palavra-passe / PIN</span>
           </div>
         </div>
         <button type="button" class="btn-close-modal p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100">
@@ -557,6 +557,25 @@
         <div>
           <label class="block text-xs font-semibold text-slate-700 mb-1" for="edit-list-desc">Descrição / Mensagem para os Amigos</label>
           <textarea id="edit-list-desc" rows="3" placeholder="Ex: Ideias para quem me quiser oferecer uma prenda!" class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 bg-slate-50/50 resize-none"></textarea>
+        </div>
+
+        <!-- Alterar Palavra-passe / PIN do Dono -->
+        <div class="pt-3 border-t border-slate-100 space-y-3">
+          <div class="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+            <i data-lucide="key-round" class="w-4 h-4 text-purple-600"></i>
+            <span>Mudar Palavra-passe / PIN de Dono (Opcional)</span>
+          </div>
+          <div>
+            <label class="block text-[11px] font-medium text-slate-600 mb-1" for="edit-list-pin">Novo PIN / Palavra-passe</label>
+            <input type="password" id="edit-list-pin" maxlength="20" placeholder="Deixa em branco para manter a atual" class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 bg-slate-50/50">
+          </div>
+          <div>
+            <label class="block text-[11px] font-medium text-slate-600 mb-1" for="edit-list-pin-confirm">Confirmar Novo PIN</label>
+            <input type="password" id="edit-list-pin-confirm" maxlength="20" placeholder="Repete a nova palavra-passe / PIN" class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 bg-slate-50/50">
+          </div>
+          <p class="text-[10px] text-slate-400">
+            Dica: Ao alterar o PIN, este navegador continuará autenticado como dono automaticamente.
+          </p>
         </div>
 
         <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
@@ -770,14 +789,22 @@
         return id;
       },
 
-      // Atualizar Detalhes da Lista (Nome e Descrição - Dono)
-      async updateListDetails(listId, title, description) {
+      // Atualizar Detalhes da Lista (Nome, Descrição e PIN opcional - Dono)
+      async updateListDetails(listId, title, description, newPin = null) {
+        const updatePayload = {
+          title,
+          description: description || ''
+        };
+        if (newPin) {
+          updatePayload.pin = String(newPin).trim();
+        }
+
         if (isCloudReady) {
           try {
-            await db.collection('lists').doc(listId).update({
-              title,
-              description: description || ''
-            });
+            await db.collection('lists').doc(listId).update(updatePayload);
+            if (newPin) {
+              saveOwnedListPin(listId, String(newPin).trim());
+            }
             return;
           } catch (err) {
             console.warn("Erro ao atualizar detalhes no Firestore, fallback local:", err);
@@ -790,6 +817,10 @@
           const data = JSON.parse(local);
           data.title = title;
           data.description = description || '';
+          if (newPin) {
+            data.pin = String(newPin).trim();
+            saveOwnedListPin(listId, String(newPin).trim());
+          }
           localStorage.setItem('wishlist_' + listId, JSON.stringify(data));
           if (AppState.currentListId === listId) {
             AppState.currentList = data;
@@ -1877,35 +1908,55 @@
       lucide.createIcons();
     };
 
-    // Abrir Modal de Editar Nome da Lista (Dono)
+    // Abrir Modal de Editar Detalhes e PIN da Lista (Dono)
     function openEditListModal() {
       if (!AppState.currentList) return;
       document.getElementById('edit-list-title').value = AppState.currentList.title || '';
       document.getElementById('edit-list-desc').value = AppState.currentList.description || '';
+      document.getElementById('edit-list-pin').value = '';
+      document.getElementById('edit-list-pin-confirm').value = '';
       document.getElementById('modal-edit-list').classList.remove('hidden');
+      lucide.createIcons();
     }
 
     document.getElementById('btn-edit-list-name')?.addEventListener('click', openEditListModal);
     document.getElementById('btn-banner-edit-list')?.addEventListener('click', openEditListModal);
 
-    // Gravar Alteração de Nome da Lista
+    // Gravar Alteração de Detalhes e PIN da Lista
     document.getElementById('form-edit-list').addEventListener('submit', async (e) => {
       e.preventDefault();
       const newTitle = document.getElementById('edit-list-title').value.trim();
       const newDesc = document.getElementById('edit-list-desc').value.trim();
+      const newPin = document.getElementById('edit-list-pin').value.trim();
+      const confirmPin = document.getElementById('edit-list-pin-confirm').value.trim();
 
       if (!newTitle) {
         showToast("O nome da lista não pode estar vazio.", 'warning');
         return;
       }
 
+      if (newPin) {
+        if (newPin !== confirmPin) {
+          showToast("A nova palavra-passe/PIN e a confirmação não coincidem.", 'warning');
+          return;
+        }
+        if (newPin.length < 3) {
+          showToast("A palavra-passe/PIN deve ter pelo menos 3 carateres.", 'warning');
+          return;
+        }
+      }
+
       try {
-        await StorageService.updateListDetails(AppState.currentListId, newTitle, newDesc);
+        await StorageService.updateListDetails(AppState.currentListId, newTitle, newDesc, newPin || null);
+        if (newPin) {
+          AppState.currentList.pin = newPin;
+          saveOwnedListPin(AppState.currentListId, newPin);
+        }
         document.getElementById('modal-edit-list').classList.add('hidden');
         document.getElementById('list-title').textContent = newTitle;
         document.getElementById('list-description').textContent = newDesc || 'Lista de desejos partilhada';
         addRecentList(AppState.currentListId, newTitle);
-        showToast("Nome da lista atualizado com sucesso! ✨", 'success');
+        showToast(newPin ? "Detalhes da lista e PIN alterados com sucesso! 🔑✨" : "Detalhes da lista atualizados com sucesso! ✨", 'success');
       } catch (err) {
         showToast("Erro ao atualizar lista: " + err.message, 'error');
       }
