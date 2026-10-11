@@ -645,6 +645,44 @@
       return id;
     }
 
+    // ==========================================
+    // SEGURANÇA: HASH CRIPTOGRÁFICO SHA-256 (Web Crypto API Nativa)
+    // ==========================================
+    async function hashPin(pin, salt = '') {
+      if (!pin) return '';
+      const clean = String(pin).trim();
+      if (!clean) return '';
+      try {
+        const textToHash = salt ? `${clean}_${salt}_wishsecret` : clean;
+        const msgBuffer = new TextEncoder().encode(textToHash);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      } catch (e) {
+        console.error("Erro ao gerar hash SHA-256:", e);
+        return clean;
+      }
+    }
+
+    async function verifyPin(enteredPin, storedPin, listId = '') {
+      if (!enteredPin || !storedPin) return false;
+      const cleanEntered = String(enteredPin).trim();
+      const cleanStored = String(storedPin).trim();
+
+      // 1. Compatibilidade com listas antigas com PIN em texto limpo
+      if (cleanEntered === cleanStored) return true;
+
+      // 2. Hash com salt específico da lista
+      if (listId) {
+        const saltedHash = await hashPin(cleanEntered, listId);
+        if (saltedHash === cleanStored) return true;
+      }
+
+      // 3. Hash direto sem salt
+      const directHash = await hashPin(cleanEntered);
+      return directHash === cleanStored;
+    }
+
     // Listas das quais este browser é dono (para não pedir PIN repetidamente no mesmo browser)
     function getOwnedListPins() {
       try {
@@ -763,11 +801,12 @@
       // Criação de Lista
       async createList(title, description, pin) {
         const id = 'list_' + Math.random().toString(36).substring(2, 8) + '_' + Date.now().toString(36).substring(4);
+        const hashedPin = await hashPin(pin, id);
         const listData = {
           id,
           title,
           description: description || '',
-          pin: String(pin).trim(),
+          pin: hashedPin,
           items: [],
           createdAt: new Date().toISOString()
         };
@@ -785,7 +824,7 @@
           localStorage.setItem('wishlist_' + id, JSON.stringify(listData));
         }
 
-        saveOwnedListPin(id, pin);
+        saveOwnedListPin(id, hashedPin);
         return id;
       },
 
@@ -795,15 +834,17 @@
           title,
           description: description || ''
         };
+        let hashedPin = null;
         if (newPin) {
-          updatePayload.pin = String(newPin).trim();
+          hashedPin = await hashPin(newPin, listId);
+          updatePayload.pin = hashedPin;
         }
 
         if (isCloudReady) {
           try {
             await db.collection('lists').doc(listId).update(updatePayload);
-            if (newPin) {
-              saveOwnedListPin(listId, String(newPin).trim());
+            if (hashedPin) {
+              saveOwnedListPin(listId, hashedPin);
             }
             return;
           } catch (err) {
@@ -817,9 +858,9 @@
           const data = JSON.parse(local);
           data.title = title;
           data.description = description || '';
-          if (newPin) {
-            data.pin = String(newPin).trim();
-            saveOwnedListPin(listId, String(newPin).trim());
+          if (hashedPin) {
+            data.pin = hashedPin;
+            saveOwnedListPin(listId, hashedPin);
           }
           localStorage.setItem('wishlist_' + listId, JSON.stringify(data));
           if (AppState.currentListId === listId) {
@@ -1050,9 +1091,22 @@
       AppState.unsubscribeList = StorageService.subscribeList(listId, (listData) => {
         AppState.currentList = listData;
         
-        // Se temos o PIN guardado, verificar se coincide com o PIN da lista
-        if (ownedPins[listId] && ownedPins[listId] === listData.pin) {
-          AppState.isOwner = true;
+        // Se temos o PIN guardado, verificar se coincide com o PIN da lista (suporta hash e texto limpo)
+        if (ownedPins[listId]) {
+          verifyPin(ownedPins[listId], listData.pin, listId).then(isMatch => {
+            if (isMatch) {
+              AppState.isOwner = true;
+              if (ownedPins[listId] !== listData.pin) {
+                saveOwnedListPin(listId, listData.pin);
+              }
+            } else {
+              AppState.isOwner = false;
+              const pins = getOwnedListPins();
+              delete pins[listId];
+              localStorage.setItem('wish_owned_pins', JSON.stringify(pins));
+            }
+            renderListHeader();
+          });
         }
 
         renderListHeader();
@@ -1868,15 +1922,20 @@
     };
 
     // Desbloquear Modo Dono via PIN
-    document.getElementById('form-unlock').addEventListener('submit', (e) => {
+    document.getElementById('form-unlock').addEventListener('submit', async (e) => {
       e.preventDefault();
       const enteredPin = document.getElementById('unlock-pin').value.trim();
       const list = AppState.currentList;
 
       if (!list) return;
 
-      if (enteredPin === list.pin) {
-        saveOwnedListPin(list.id, enteredPin);
+      const isMatch = await verifyPin(enteredPin, list.pin, list.id);
+      if (isMatch) {
+        const hashed = await hashPin(enteredPin, list.id);
+        if (list.pin === enteredPin && list.pin !== hashed) {
+          StorageService.updateListDetails(list.id, list.title, list.description || '', enteredPin).catch(() => {});
+        }
+        saveOwnedListPin(list.id, hashed);
         AppState.isOwner = true;
         document.getElementById('modal-unlock').classList.add('hidden');
         showToast("Modo Dono desbloqueado com sucesso! 👑", 'success');
@@ -1949,8 +2008,9 @@
       try {
         await StorageService.updateListDetails(AppState.currentListId, newTitle, newDesc, newPin || null);
         if (newPin) {
-          AppState.currentList.pin = newPin;
-          saveOwnedListPin(AppState.currentListId, newPin);
+          const hashed = await hashPin(newPin, AppState.currentListId);
+          AppState.currentList.pin = hashed;
+          saveOwnedListPin(AppState.currentListId, hashed);
         }
         document.getElementById('modal-edit-list').classList.add('hidden');
         document.getElementById('list-title').textContent = newTitle;
