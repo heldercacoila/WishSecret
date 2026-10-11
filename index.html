@@ -1118,6 +1118,53 @@
       lucide.createIcons();
     }
 
+    // Utilitário para extrair o domínio principal/marca de um URL de loja
+    function extractStoreName(url) {
+      if (!url || typeof url !== 'string') return '';
+      try {
+        let urlStr = url.trim();
+        if (!/^https?:\/\//i.test(urlStr)) urlStr = 'https://' + urlStr;
+        const hostname = new URL(urlStr).hostname.toLowerCase().replace(/^www\d*\./, '');
+        const parts = hostname.split('.');
+        if (parts.length === 1) {
+          const single = parts[0];
+          return single.charAt(0).toUpperCase() + single.slice(1);
+        }
+
+        // TLDs comuns com 2 níveis (ex: .co.uk, .com.pt, .com.br, .org.uk, .co.jp, etc.)
+        const commonSecondLevels = ['co', 'com', 'org', 'net', 'edu', 'gov', 'mil'];
+        const lastPart = parts[parts.length - 1];
+        const secondToLast = parts[parts.length - 2];
+
+        let brand = '';
+        if (lastPart.length === 2 && commonSecondLevels.includes(secondToLast) && parts.length >= 3) {
+          brand = parts[parts.length - 3];
+        } else {
+          brand = parts[parts.length - 2];
+        }
+
+        // Dicionário de marcas conhecidas para formatação / casing específico
+        const brandAliases = {
+          'amzn': 'Amazon',
+          'aliexpress': 'AliExpress',
+          'elcorteingles': 'El Corte Inglés',
+          'leroymerlin': 'Leroy Merlin',
+          'mediamarkt': 'MediaMarkt',
+          'ikea': 'IKEA',
+          'fnac': 'FNAC'
+        };
+
+        if (brandAliases[brand]) {
+          return brandAliases[brand];
+        }
+
+        // Se tiver hífens (ex: toys-r-us -> Toys R Us)
+        return brand.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      } catch (e) {
+        return '';
+      }
+    }
+
     // Renderizar Grelha de Itens
     function renderItems() {
       const list = AppState.currentList;
@@ -1269,13 +1316,8 @@
 
         function formatStoreName(link, index) {
           if (link.label && link.label.trim()) return link.label.trim();
-          try {
-            const host = new URL(link.url).hostname.replace(/^www\./, '');
-            const name = host.split('.')[0];
-            return name.charAt(0).toUpperCase() + name.slice(1);
-          } catch (e) {
-            return `Loja ${index + 1}`;
-          }
+          const name = extractStoreName(link.url);
+          return name || `Loja ${index + 1}`;
         }
 
         // Bloco de lojas para o corpo do cartão
@@ -1325,7 +1367,7 @@
                   <div class="absolute bottom-2.5 right-2.5">
                     <a href="${itemLinks[0].url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/95 backdrop-blur-xs text-slate-900 hover:text-brand-600 font-bold text-xs shadow-md border border-slate-200/80 hover:scale-105 transition-all" title="${itemLinks.length > 1 ? `Ver ${itemLinks.length} opções de compra` : 'Ver na Loja'}">
                       <i data-lucide="shopping-cart" class="w-4 h-4 text-brand-600"></i>
-                      <span>${itemLinks.length > 1 ? `${itemLinks.length} Lojas ↗` : 'Comprar ↗'}</span>
+                      <span>${itemLinks.length > 1 ? `${itemLinks.length} Lojas ↗` : `${escapeHtml(formatStoreName(itemLinks[0], 0))} ↗`}</span>
                     </a>
                   </div>
                 ` : ''}
@@ -1604,6 +1646,17 @@
           <i data-lucide="trash-2" class="w-4 h-4"></i>
         </button>
       `;
+
+      const urlInput = row.querySelector('.store-link-url');
+      const labelInput = row.querySelector('.store-link-label');
+
+      // Sugere automaticamente o nome da loja se o utilizador preencher o link e deixar o nome vazio
+      urlInput.addEventListener('change', () => {
+        if (!labelInput.value.trim() && urlInput.value.trim()) {
+          const suggested = extractStoreName(urlInput.value);
+          if (suggested) labelInput.value = suggested;
+        }
+      });
 
       row.querySelector('.btn-remove-link').addEventListener('click', () => {
         const rows = container.querySelectorAll('.store-link-row');
