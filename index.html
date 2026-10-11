@@ -1,0 +1,1512 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WishSecret - Wishlists com Modo Mistério</title>
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f5f3ff',
+              100: '#ede9fe',
+              200: '#ddd6fe',
+              300: '#c4b5fd',
+              400: '#a78bfa',
+              500: '#8b5cf6',
+              600: '#7c3aed',
+              700: '#6d28d9',
+              800: '#5b21b6',
+              900: '#4c1d95',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons via CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Firebase App & Firestore SDKs (Compat via CDN) -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+
+  <style>
+    /* Smooth transitions and scrollbar */
+    body {
+      background-color: #fafafa;
+    }
+    .custom-scroll::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #e2e8f0;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col font-sans antialiased selection:bg-brand-100 selection:text-brand-900">
+
+  <!-- ================= NAVBAR ================= -->
+  <header class="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <a href="#" id="brand-logo" class="flex items-center gap-2.5 group transition-transform active:scale-95">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-brand-500/20 group-hover:shadow-brand-500/30 transition-shadow">
+          <i data-lucide="gift" class="w-5 h-5"></i>
+        </div>
+        <div class="leading-tight">
+          <span class="font-bold text-lg text-slate-900 tracking-tight">Wish<span class="text-brand-600">Secret</span></span>
+          <span class="hidden sm:inline-block text-[11px] font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md ml-1.5">Modo Mistério</span>
+        </div>
+      </a>
+
+      <!-- Quick action in navbar -->
+      <div id="nav-actions" class="flex items-center gap-2">
+        <button id="btn-cloud-status" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>Nuvem Ligada</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= TOAST CONTAINER ================= -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+  <!-- ================= MAIN CONTENT ================= -->
+  <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
+
+    <!-- VIEW 1: HOME / CRIAÇÃO & ENTRADA -->
+    <div id="view-home" class="space-y-8 sm:space-y-12">
+      <!-- Hero -->
+      <section class="text-center max-w-2xl mx-auto pt-4 sm:pt-8 space-y-4">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 border border-brand-200 text-brand-700 text-xs font-medium">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+          Wishlists secretas para aniversários, natal e eventos
+        </div>
+        <h1 class="text-3xl sm:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight">
+          Cria a tua lista de desejos. <br/>
+          <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-indigo-600">A surpresa fica em segredo.</span>
+        </h1>
+        <p class="text-slate-600 text-base sm:text-lg">
+          Os teus amigos reservam presentes entre si para não haver prendas repetidas, mas <strong>tu nunca sabes o que foi reservado</strong> até abrires a prenda!
+        </p>
+      </section>
+
+      <!-- Action Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+        <!-- Card 1: Criar Lista -->
+        <div class="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/90 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+          <div class="w-12 h-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center mb-5">
+            <i data-lucide="plus-circle" class="w-6 h-6"></i>
+          </div>
+          <h2 class="text-xl font-bold text-slate-900 mb-2">Criar Nova Wishlist</h2>
+          <p class="text-slate-500 text-sm mb-6">Cria a tua lista, adiciona os teus desejos com fotos e define um PIN de dono para editar quando quiseres.</p>
+
+          <form id="form-create-list" class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1" for="create-title">Nome da Lista *</label>
+              <input type="text" id="create-title" required placeholder="Ex: Aniversário do Helder 2026" class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-colors bg-slate-50/50">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1" for="create-desc">Descrição / Mensagem (opcional)</label>
+              <textarea id="create-desc" rows="2" placeholder="Ex: Algumas ideias para quem me quiser mimar!" class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-colors bg-slate-50/50 resize-none"></textarea>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1" for="create-pin">PIN de Dono (4 dígitos ou código secreto) *</label>
+              <input type="password" id="create-pin" required maxlength="12" placeholder="Ex: 1234" class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-colors bg-slate-50/50">
+              <span class="text-[11px] text-slate-400 mt-1 block">Necessário para desbloquear a edição quando acederes a partir de outros dispositivos.</span>
+            </div>
+            <button type="submit" class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-700 hover:to-indigo-700 text-white font-semibold text-sm shadow-md shadow-brand-500/25 active:scale-[0.99] transition-all flex items-center justify-center gap-2">
+              <i data-lucide="check" class="w-4 h-4"></i>
+              <span>Criar a Minha Lista</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- Card 2: Entrar numa Lista -->
+        <div class="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/90 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
+          <div>
+            <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-5">
+              <i data-lucide="search" class="w-6 h-6"></i>
+            </div>
+            <h2 class="text-xl font-bold text-slate-900 mb-2">Abrir Lista de Amigo</h2>
+            <p class="text-slate-500 text-sm mb-6">Recebeste um link ou código de uma lista? Cola o código ou link aqui para ver os desejos e reservar presentes.</p>
+
+            <form id="form-open-list" class="space-y-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1" for="open-code">Código da Lista ou Link Completo</label>
+                <input type="text" id="open-code" required placeholder="Ex: helder-2026 ou cola o link" class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-colors bg-slate-50/50">
+              </div>
+              <button type="submit" class="w-full py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm shadow-sm active:scale-[0.99] transition-all flex items-center justify-center gap-2">
+                <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                <span>Ver Lista de Desejos</span>
+              </button>
+            </form>
+          </div>
+
+          <!-- Minhas Listas Recentes no Navegador -->
+          <div id="recent-lists-section" class="mt-8 pt-6 border-t border-slate-100 hidden">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-1.5">
+              <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+              Minhas Listas Recentes
+            </h3>
+            <div id="recent-lists-container" class="space-y-2"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 2: DETALHE DA WISHLIST -->
+    <div id="view-list" class="hidden space-y-6">
+      
+      <!-- Top Bar: Back & Role Switcher -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+        <div class="flex items-center gap-2">
+          <button id="btn-back-home" class="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors" title="Voltar ao Início">
+            <i data-lucide="arrow-left" class="w-5 h-5"></i>
+          </button>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 id="list-title" class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">Carregando lista...</h2>
+              <span id="role-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold"></span>
+            </div>
+            <p id="list-description" class="text-xs sm:text-sm text-slate-500 line-clamp-1"></p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          <!-- Share Button -->
+          <button id="btn-share-list" class="flex-1 sm:flex-none px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors">
+            <i data-lucide="share-2" class="w-4 h-4"></i>
+            <span>Partilhar Link</span>
+          </button>
+
+          <!-- Owner Unlock / Lock Button -->
+          <div id="owner-action-container"></div>
+        </div>
+      </div>
+
+      <!-- Owner Quick Action: Add Item Banner (Visible only for Owner) -->
+      <div id="owner-banner" class="hidden bg-gradient-to-r from-brand-600 to-indigo-600 text-white p-5 rounded-2xl shadow-md shadow-brand-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2 font-bold text-base">
+            <i data-lucide="crown" class="w-5 h-5 text-amber-300"></i>
+            <span>Modo Dono Ativo</span>
+          </div>
+          <p class="text-xs sm:text-sm text-brand-100">
+            Adiciona, edita ou elimina os teus desejos. Lembra-te: o estado de reserva fica oculto para manter a tua surpresa!
+          </p>
+        </div>
+        <button id="btn-open-add-modal" class="whitespace-nowrap px-4 py-2.5 rounded-xl bg-white text-brand-700 hover:bg-brand-50 font-bold text-xs shadow-sm transition-all flex items-center gap-2 active:scale-95">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span>Adicionar Desejo</span>
+        </button>
+      </div>
+
+      <!-- Guest Info Banner (Visible only for Guest) -->
+      <div id="guest-banner" class="bg-amber-50/80 border border-amber-200 text-amber-900 p-4 rounded-2xl flex items-start sm:items-center gap-3">
+        <div class="p-2 rounded-xl bg-amber-100 text-amber-700 shrink-0">
+          <i data-lucide="eye-off" class="w-5 h-5"></i>
+        </div>
+        <div class="text-xs sm:text-sm">
+          <strong class="font-semibold">Modo Amigo / Convidado:</strong> Podes reservar prendas para evitar repetições. O dono da lista <strong>nunca saberá</strong> o que foi reservado por quem!
+        </div>
+      </div>
+
+      <!-- Budget Filter Tabs -->
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+            <i data-lucide="wallet" class="w-3.5 h-3.5"></i>
+            Filtrar por Orçamento
+          </h3>
+          <span id="items-count-label" class="text-xs text-slate-400 font-medium">0 desejos</span>
+        </div>
+        <div class="flex items-center gap-2 overflow-x-auto pb-1 custom-scroll" id="budget-tabs">
+          <button data-budget="all" class="budget-tab-btn px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap bg-brand-600 text-white shadow-xs">
+            Todos
+          </button>
+          <button data-budget="under20" class="budget-tab-btn px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap bg-white text-slate-600 border border-slate-200 hover:bg-slate-50">
+            Até 20€
+          </button>
+          <button data-budget="20to50" class="budget-tab-btn px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap bg-white text-slate-600 border border-slate-200 hover:bg-slate-50">
+            20€ - 50€
+          </button>
+          <button data-budget="50to100" class="budget-tab-btn px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap bg-white text-slate-600 border border-slate-200 hover:bg-slate-50">
+            50€ - 100€
+          </button>
+          <button data-budget="over100" class="budget-tab-btn px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap bg-white text-slate-600 border border-slate-200 hover:bg-slate-50">
+            Mais de 100€
+          </button>
+        </div>
+      </div>
+
+      <!-- Items Grid -->
+      <div id="items-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <!-- Dynamic Items rendered here -->
+      </div>
+
+      <!-- Empty State -->
+      <div id="empty-state" class="hidden text-center py-16 px-4 bg-white rounded-3xl border border-dashed border-slate-200 space-y-3">
+        <div class="w-16 h-16 rounded-full bg-slate-50 text-slate-400 flex items-center justify-center mx-auto">
+          <i data-lucide="package-open" class="w-8 h-8"></i>
+        </div>
+        <h4 class="text-base font-bold text-slate-700">Ainda não há desejos nesta categoria</h4>
+        <p class="text-xs text-slate-400 max-w-sm mx-auto">
+          O dono da lista ainda não adicionou nenhum item a esta faixa de orçamento.
+        </p>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ================= FOOTER ================= -->
+  <footer class="mt-auto border-t border-slate-200 bg-white py-6">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
+      <div>
+        WishSecret &copy; 2026 — Wishlists Colaborativas com Segredo do Dono.
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="inline-flex items-center gap-1 text-slate-500">
+          <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-500"></i>
+          Surpresa 100% Garantida
+        </span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ================= MODALS ================= -->
+
+  <!-- MODAL: ADICIONAR / EDITAR DESEJO (DONO) -->
+  <div id="modal-item" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto custom-scroll space-y-5">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <h3 id="modal-item-title" class="text-lg font-bold text-slate-900">Adicionar Desejo</h3>
+        <button type="button" class="btn-close-modal p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="form-item" class="space-y-4">
+        <input type="hidden" id="item-edit-id">
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1" for="item-title">Nome do Desejo / Produto *</label>
+          <input type="text" id="item-title" required placeholder="Ex: Auscultadores Sem Fios Sony" class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 bg-slate-50/50">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1" for="item-price">Preço Aproximado (€) *</label>
+            <input type="number" step="0.01" min="0" id="item-price" required placeholder="Ex: 49.99" class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 bg-slate-50/50">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1" for="item-budget">Categoria de Orçamento</label>
+            <select id="item-budget" class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 bg-slate-50/50">
+              <option value="under20">Até 20€</option>
+              <option value="20to50">20€ - 50€</option>
+              <option value="50to100">50€ - 100€</option>
+              <option value="over100">Mais de 100€</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1" for="item-url">Link Direto para a Loja</label>
+          <input type="url" id="item-url" placeholder="https://..." class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 bg-slate-50/50">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1" for="item-notes">Notas / Detalhes (Tamanho, Cor, Preferência)</label>
+          <textarea id="item-notes" rows="2" placeholder="Ex: Tamanho M, cor preta ou cinzenta" class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 bg-slate-50/50 resize-none"></textarea>
+        </div>
+
+        <!-- FOTO DO PRODUTO: UPLOAD DO TELEMOVEL/PC OU URL -->
+        <div class="space-y-2 pt-2 border-t border-slate-100">
+          <label class="block text-xs font-semibold text-slate-700">Foto do Produto (Telemóvel, Computador ou URL)</label>
+          
+          <div class="flex items-center gap-2">
+            <label for="item-file-input" class="cursor-pointer px-3.5 py-2 rounded-xl bg-brand-50 text-brand-700 hover:bg-brand-100 font-semibold text-xs transition-colors flex items-center gap-1.5 border border-brand-200">
+              <i data-lucide="camera" class="w-4 h-4"></i>
+              <span>Escolher Foto do Telemóvel / PC</span>
+            </label>
+            <input type="file" id="item-file-input" accept="image/*" class="hidden">
+            <span class="text-xs text-slate-400">ou</span>
+          </div>
+
+          <input type="url" id="item-image-url" placeholder="Colar link de imagem da web (URL)" class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 bg-slate-50/50">
+
+          <!-- Image Preview Area -->
+          <div id="image-preview-wrapper" class="hidden relative mt-2 w-full h-36 bg-slate-100 rounded-xl overflow-hidden border border-slate-200 flex items-center justify-center">
+            <img id="image-preview" src="" alt="Pré-visualização" class="h-full w-full object-contain">
+            <button type="button" id="btn-remove-preview" class="absolute top-2 right-2 p-1.5 rounded-full bg-slate-900/70 text-white hover:bg-slate-900 text-xs transition-colors">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
+          <button type="button" class="btn-close-modal px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 font-semibold text-xs transition-colors">
+            Cancelar
+          </button>
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs shadow-sm shadow-brand-500/25 transition-all flex items-center gap-1.5">
+            <i data-lucide="save" class="w-4 h-4"></i>
+            <span>Gravar Desejo</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: RESERVAR OFERTA (CONVIDADO) -->
+  <div id="modal-reserve" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <i data-lucide="gift" class="w-4 h-4"></i>
+          </div>
+          <h3 class="text-base font-bold text-slate-900">Reservar Oferta</h3>
+        </div>
+        <button type="button" class="btn-close-modal p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-100 space-y-1">
+        <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Item a reservar</span>
+        <h4 id="reserve-item-title" class="font-bold text-slate-900 text-sm"></h4>
+        <p id="reserve-item-price" class="text-xs font-semibold text-brand-600"></p>
+      </div>
+
+      <form id="form-reserve" class="space-y-4">
+        <input type="hidden" id="reserve-item-id">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1" for="reserve-name">O teu nome (opcional)</label>
+          <input type="text" id="reserve-name" placeholder="Ex: Marta ou Amigo Secreto" class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 bg-slate-50/50">
+          <span class="text-[11px] text-slate-400 mt-1 block">Apenas os outros amigos verão este nome para não comprarem igual. O dono da lista <strong>NUNCA</strong> saberá!</span>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button type="button" class="btn-close-modal px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 font-semibold text-xs transition-colors">
+            Cancelar
+          </button>
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-sm shadow-emerald-600/25 transition-all flex items-center gap-1.5">
+            <i data-lucide="check" class="w-4 h-4"></i>
+            <span>Confirmar Reserva</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: DESBLOQUEAR MODO DONO (PIN) -->
+  <div id="modal-unlock" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center">
+            <i data-lucide="lock" class="w-4 h-4"></i>
+          </div>
+          <h3 class="text-base font-bold text-slate-900">Desbloquear Modo Dono</h3>
+        </div>
+        <button type="button" class="btn-close-modal p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <p class="text-xs text-slate-500">
+        Introduz o PIN que definiste ao criar esta lista para poderes adicionar, editar e apagar itens.
+      </p>
+
+      <form id="form-unlock" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1" for="unlock-pin">PIN do Dono</label>
+          <input type="password" id="unlock-pin" required placeholder="PIN secreto" class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 bg-slate-50/50">
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button type="button" class="btn-close-modal px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 font-semibold text-xs transition-colors">
+            Cancelar
+          </button>
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs shadow-sm transition-all flex items-center gap-1.5">
+            <i data-lucide="key" class="w-4 h-4"></i>
+            <span>Desbloquear</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: VISUALIZAR FOTO COMPLETA (LIGHTBOX) -->
+  <div id="modal-image-lightbox" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 hidden">
+    <div class="relative max-w-4xl w-full max-h-[92vh] flex flex-col items-center">
+      <!-- Botão de Fechar -->
+      <button type="button" class="btn-close-modal absolute -top-12 right-0 sm:right-2 p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-colors flex items-center gap-1.5 text-xs font-semibold" title="Fechar (Esc)">
+        <span>Fechar</span>
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+      
+      <!-- Contentor da Imagem Completa sem cortes -->
+      <div class="relative w-full flex items-center justify-center overflow-hidden rounded-2xl bg-black/40 border border-white/10 shadow-2xl p-2">
+        <img id="lightbox-img" src="" alt="Foto Completa" class="max-h-[78vh] max-w-full rounded-xl object-contain shadow-lg">
+      </div>
+      
+      <div class="mt-3 text-center">
+        <h4 id="lightbox-caption" class="text-white text-base font-bold"></h4>
+        <p id="lightbox-price" class="text-brand-300 text-xs font-medium mt-0.5"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= SCRIPTS ================= -->
+  <script>
+    // ==========================================
+    // 1. CONFIGURAÇÃO & INICIALIZAÇÃO FIREBASE
+    // ==========================================
+    const firebaseConfig = {
+      apiKey: "AIzaSyDuzmroXJ31j7rQD6MiEmmtjRB0vyb4vns",
+      authDomain: "wishlist-c9aa2.firebaseapp.com",
+      projectId: "wishlist-c9aa2",
+      storageBucket: "wishlist-c9aa2.firebasestorage.app",
+      messagingSenderId: "816201187845",
+      appId: "1:816201187845:web:ba0880fdb48d9fd050126c",
+      measurementId: "G-WNEHDJ0PV2"
+    };
+
+    let db = null;
+    let isCloudReady = false;
+
+    try {
+      if (typeof firebase !== 'undefined' && firebase.initializeApp) {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.firestore();
+        isCloudReady = true;
+        console.log("🔥 Firebase Firestore inicializado com sucesso.");
+      }
+    } catch (err) {
+      console.warn("Aviso ao ligar ao Firebase. A operar em fallback local:", err);
+      isCloudReady = false;
+    }
+
+    // ==========================================
+    // 2. ESTADO GLOBAL DA APLICAÇÃO
+    // ==========================================
+    const AppState = {
+      currentListId: null,
+      currentList: null,
+      reservations: {},      // itemId -> { reservedBy, guestToken, reservedAt }
+      isOwner: false,
+      activeBudgetFilter: 'all',
+      tempImageData: '',     // Base64 ou URL da imagem no modal
+      unsubscribeList: null,
+      unsubscribeReservations: null,
+    };
+
+    // Identificador único deste browser para saber quais reservas foram feitas por este utilizador
+    function getBrowserGuestId() {
+      let id = localStorage.getItem('wish_guest_browser_id');
+      if (!id) {
+        id = 'guest_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
+        localStorage.setItem('wish_guest_browser_id', id);
+      }
+      return id;
+    }
+
+    // Listas das quais este browser é dono (para não pedir PIN repetidamente no mesmo browser)
+    function getOwnedListPins() {
+      try {
+        return JSON.parse(localStorage.getItem('wish_owned_pins') || '{}');
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function saveOwnedListPin(listId, pin) {
+      const pins = getOwnedListPins();
+      pins[listId] = pin;
+      localStorage.setItem('wish_owned_pins', JSON.stringify(pins));
+    }
+
+    // Histórico de listas recentes abertas
+    function getRecentLists() {
+      try {
+        return JSON.parse(localStorage.getItem('wish_recent_lists') || '[]');
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function addRecentList(id, title) {
+      let recents = getRecentLists().filter(r => r.id !== id);
+      recents.unshift({ id, title, accessedAt: Date.now() });
+      if (recents.length > 5) recents.pop();
+      localStorage.setItem('wish_recent_lists', JSON.stringify(recents));
+      renderRecentLists();
+    }
+
+    // ==========================================
+    // 3. SISTEMA DE TOASTS
+    // ==========================================
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      const colors = {
+        success: 'bg-emerald-600 text-white',
+        error: 'bg-rose-600 text-white',
+        info: 'bg-slate-900 text-white',
+        warning: 'bg-amber-600 text-white'
+      };
+
+      const icons = {
+        success: 'check-circle-2',
+        error: 'alert-circle',
+        info: 'info',
+        warning: 'alert-triangle'
+      };
+
+      toast.className = `${colors[type] || colors.info} pointer-events-auto px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 text-xs font-semibold transform transition-all duration-300 translate-y-2 opacity-0`;
+      toast.innerHTML = `
+        <i data-lucide="${icons[type] || 'info'}" class="w-4 h-4 shrink-0"></i>
+        <span class="flex-1">${message}</span>
+      `;
+
+      container.appendChild(toast);
+      lucide.createIcons({ root: toast });
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // ==========================================
+    // 4. COMPRESSOR DE IMAGENS DO TELEMÓVEL / PC
+    // ==========================================
+    function compressImageFile(file, maxWidth = 600, maxHeight = 600, quality = 0.75) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+              if (width > maxWidth) {
+                height = Math.round((height * maxWidth) / width);
+                width = maxWidth;
+              }
+            } else {
+              if (height > maxHeight) {
+                width = Math.round((width * maxHeight) / height);
+                height = maxHeight;
+              }
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+          };
+          img.onerror = reject;
+          img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // ==========================================
+    // 5. CAMADA DE DADOS (STORAGE SERVICE)
+    // ==========================================
+    const StorageService = {
+      // Criação de Lista
+      async createList(title, description, pin) {
+        const id = 'list_' + Math.random().toString(36).substring(2, 8) + '_' + Date.now().toString(36).substring(4);
+        const listData = {
+          id,
+          title,
+          description: description || '',
+          pin: String(pin).trim(),
+          items: [],
+          createdAt: new Date().toISOString()
+        };
+
+        if (isCloudReady) {
+          try {
+            await db.collection('lists').doc(id).set(listData);
+            // Inicializa doc de reservas vazio
+            await db.collection('reservations').doc(id).set({});
+          } catch (err) {
+            console.error("Erro ao gravar no Firestore, fallback local:", err);
+            localStorage.setItem('wishlist_' + id, JSON.stringify(listData));
+          }
+        } else {
+          localStorage.setItem('wishlist_' + id, JSON.stringify(listData));
+        }
+
+        saveOwnedListPin(id, pin);
+        return id;
+      },
+
+      // Subscrição em Tempo Real da Lista
+      subscribeList(listId, onUpdate, onError) {
+        if (isCloudReady) {
+          return db.collection('lists').doc(listId).onSnapshot((doc) => {
+            if (doc.exists) {
+              onUpdate(doc.data());
+            } else {
+              // Tenta fallback local
+              const local = localStorage.getItem('wishlist_' + listId);
+              if (local) onUpdate(JSON.parse(local));
+              else onError("A lista não foi encontrada.");
+            }
+          }, (err) => {
+            console.warn("Erro no listener do Firestore:", err);
+            const local = localStorage.getItem('wishlist_' + listId);
+            if (local) onUpdate(JSON.parse(local));
+            else onError(err.message);
+          });
+        } else {
+          const local = localStorage.getItem('wishlist_' + listId);
+          if (local) {
+            onUpdate(JSON.parse(local));
+          } else {
+            onError("Lista não encontrada.");
+          }
+          return () => {};
+        }
+      },
+
+      // Subscrição em Tempo Real de Reservas (Apenas para convidados)
+      subscribeReservations(listId, onUpdate) {
+        if (isCloudReady) {
+          return db.collection('reservations').doc(listId).onSnapshot((doc) => {
+            if (doc.exists) {
+              onUpdate(doc.data() || {});
+            } else {
+              onUpdate({});
+            }
+          }, (err) => {
+            console.warn("Erro ao ler reservas do Firestore:", err);
+            const local = localStorage.getItem('reservations_' + listId);
+            onUpdate(local ? JSON.parse(local) : {});
+          });
+        } else {
+          const local = localStorage.getItem('reservations_' + listId);
+          onUpdate(local ? JSON.parse(local) : {});
+          return () => {};
+        }
+      },
+
+      // Adicionar ou Atualizar Item na Lista
+      async saveItem(listId, item) {
+        if (isCloudReady) {
+          try {
+            const listRef = db.collection('lists').doc(listId);
+            const doc = await listRef.get();
+            if (doc.exists) {
+              const data = doc.data();
+              const items = data.items || [];
+              const index = items.findIndex(i => i.id === item.id);
+              if (index >= 0) {
+                items[index] = item;
+              } else {
+                items.push(item);
+              }
+              await listRef.update({ items });
+              return;
+            }
+          } catch (e) {
+            console.warn("Falha ao atualizar item no Firestore:", e);
+          }
+        }
+
+        // Fallback localStorage
+        const local = localStorage.getItem('wishlist_' + listId);
+        if (local) {
+          const data = JSON.parse(local);
+          const items = data.items || [];
+          const index = items.findIndex(i => i.id === item.id);
+          if (index >= 0) items[index] = item;
+          else items.push(item);
+          data.items = items;
+          localStorage.setItem('wishlist_' + listId, JSON.stringify(data));
+          if (AppState.currentListId === listId) {
+            AppState.currentList = data;
+            renderItems();
+          }
+        }
+      },
+
+      // Remover Item da Lista
+      async deleteItem(listId, itemId) {
+        if (isCloudReady) {
+          try {
+            const listRef = db.collection('lists').doc(listId);
+            const doc = await listRef.get();
+            if (doc.exists) {
+              const data = doc.data();
+              const items = (data.items || []).filter(i => i.id !== itemId);
+              await listRef.update({ items });
+            }
+            // Remove também reserva se existir
+            const resRef = db.collection('reservations').doc(listId);
+            await resRef.update({
+              [itemId]: firebase.firestore.FieldValue.delete()
+            });
+            return;
+          } catch (e) {
+            console.warn("Erro ao apagar no Firestore:", e);
+          }
+        }
+
+        // Fallback Local
+        const local = localStorage.getItem('wishlist_' + listId);
+        if (local) {
+          const data = JSON.parse(local);
+          data.items = (data.items || []).filter(i => i.id !== itemId);
+          localStorage.setItem('wishlist_' + listId, JSON.stringify(data));
+          if (AppState.currentListId === listId) {
+            AppState.currentList = data;
+            renderItems();
+          }
+        }
+      },
+
+      // Reservar Item (Convidado)
+      async reserveItem(listId, itemId, reservedByName) {
+        const guestBrowserId = getBrowserGuestId();
+        const reservation = {
+          reservedBy: reservedByName ? reservedByName.trim() : 'Amigo Secreto',
+          guestBrowserId: guestBrowserId,
+          reservedAt: new Date().toISOString()
+        };
+
+        if (isCloudReady) {
+          try {
+            await db.collection('reservations').doc(listId).set({
+              [itemId]: reservation
+            }, { merge: true });
+            return;
+          } catch (e) {
+            console.warn("Erro ao reservar no Firestore:", e);
+          }
+        }
+
+        // Fallback Local
+        const key = 'reservations_' + listId;
+        const current = JSON.parse(localStorage.getItem(key) || '{}');
+        current[itemId] = reservation;
+        localStorage.setItem(key, JSON.stringify(current));
+        AppState.reservations = current;
+        renderItems();
+      },
+
+      // Cancelar Reserva (Convidado)
+      async cancelReservation(listId, itemId) {
+        if (isCloudReady) {
+          try {
+            await db.collection('reservations').doc(listId).update({
+              [itemId]: firebase.firestore.FieldValue.delete()
+            });
+            return;
+          } catch (e) {
+            console.warn("Erro ao cancelar reserva no Firestore:", e);
+          }
+        }
+
+        // Fallback Local
+        const key = 'reservations_' + listId;
+        const current = JSON.parse(localStorage.getItem(key) || '{}');
+        delete current[itemId];
+        localStorage.setItem(key, JSON.stringify(current));
+        AppState.reservations = current;
+        renderItems();
+      }
+    };
+
+    // ==========================================
+    // 6. CONTROLADOR DE VISTAS & NAVEGAÇÃO
+    // ==========================================
+    function switchView(viewName) {
+      const viewHome = document.getElementById('view-home');
+      const viewList = document.getElementById('view-list');
+
+      if (viewName === 'home') {
+        viewHome.classList.remove('hidden');
+        viewList.classList.add('hidden');
+        if (AppState.unsubscribeList) { AppState.unsubscribeList(); AppState.unsubscribeList = null; }
+        if (AppState.unsubscribeReservations) { AppState.unsubscribeReservations(); AppState.unsubscribeReservations = null; }
+        AppState.currentListId = null;
+        AppState.currentList = null;
+        AppState.isOwner = false;
+        // Atualiza URL
+        window.history.pushState({}, '', window.location.pathname);
+      } else if (viewName === 'list') {
+        viewHome.classList.add('hidden');
+        viewList.classList.remove('hidden');
+      }
+      lucide.createIcons();
+    }
+
+    // Carregar Lista por ID
+    function loadList(listId) {
+      if (!listId) return;
+      AppState.currentListId = listId;
+
+      // Limpar subscrições anteriores
+      if (AppState.unsubscribeList) AppState.unsubscribeList();
+      if (AppState.unsubscribeReservations) AppState.unsubscribeReservations();
+
+      // Verificar se este browser tem o PIN guardado desta lista (reconhecimento automático de Dono)
+      const ownedPins = getOwnedListPins();
+      AppState.isOwner = !!ownedPins[listId];
+
+      switchView('list');
+      document.getElementById('list-title').textContent = "A carregar lista...";
+
+      // Subscrever Dados da Lista
+      AppState.unsubscribeList = StorageService.subscribeList(listId, (listData) => {
+        AppState.currentList = listData;
+        
+        // Se temos o PIN guardado, verificar se coincide com o PIN da lista
+        if (ownedPins[listId] && ownedPins[listId] === listData.pin) {
+          AppState.isOwner = true;
+        }
+
+        renderListHeader();
+        renderItems();
+        addRecentList(listData.id, listData.title);
+
+        // Atualiza query param na barra de endereço
+        const newUrl = `${window.location.pathname}?list=${encodeURIComponent(listId)}`;
+        window.history.pushState({ listId }, '', newUrl);
+
+      }, (errMsg) => {
+        showToast(errMsg, 'error');
+        switchView('home');
+      });
+
+      // Se for CONVIDADO, subscreve as reservas
+      // Se for DONO, o dono NUNCA subscreve as reservas para preservar o segredo!
+      if (!AppState.isOwner) {
+        AppState.unsubscribeReservations = StorageService.subscribeReservations(listId, (reservations) => {
+          AppState.reservations = reservations;
+          renderItems();
+        });
+      } else {
+        AppState.reservations = {};
+      }
+    }
+
+    // ==========================================
+    // 7. RENDERIZAÇÃO DA INTERFACE
+    // ==========================================
+
+    // Renderizar Cabeçalho da Lista e Botões de Dono/Convidado
+    function renderListHeader() {
+      const list = AppState.currentList;
+      if (!list) return;
+
+      document.getElementById('list-title').textContent = list.title;
+      document.getElementById('list-description').textContent = list.description || 'Lista de desejos partilhada';
+
+      const roleBadge = document.getElementById('role-badge');
+      const ownerBanner = document.getElementById('owner-banner');
+      const guestBanner = document.getElementById('guest-banner');
+      const ownerActionContainer = document.getElementById('owner-action-container');
+
+      if (AppState.isOwner) {
+        roleBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-100 text-purple-700 border border-purple-200";
+        roleBadge.textContent = "Modo Dono 👑";
+
+        ownerBanner.classList.remove('hidden');
+        guestBanner.classList.add('hidden');
+
+        ownerActionContainer.innerHTML = `
+          <button id="btn-lock-owner" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors">
+            <i data-lucide="log-out" class="w-4 h-4 text-slate-500"></i>
+            <span>Sair do Modo Dono</span>
+          </button>
+        `;
+
+        document.getElementById('btn-lock-owner').addEventListener('click', () => {
+          // Remove pin guardado se desejar sair
+          const pins = getOwnedListPins();
+          delete pins[AppState.currentListId];
+          localStorage.setItem('wish_owned_pins', JSON.stringify(pins));
+          AppState.isOwner = false;
+          showToast("Entraste no Modo Convidado.", 'info');
+          loadList(AppState.currentListId);
+        });
+
+      } else {
+        roleBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200";
+        roleBadge.textContent = "Modo Amigo / Convidado 🎁";
+
+        ownerBanner.classList.add('hidden');
+        guestBanner.classList.remove('hidden');
+
+        ownerActionContainer.innerHTML = `
+          <button id="btn-open-unlock" class="px-3.5 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs font-semibold flex items-center gap-1.5 transition-colors">
+            <i data-lucide="key-round" class="w-4 h-4"></i>
+            <span>És o Dono? Entrar</span>
+          </button>
+        `;
+
+        document.getElementById('btn-open-unlock').addEventListener('click', () => {
+          document.getElementById('unlock-pin').value = '';
+          document.getElementById('modal-unlock').classList.remove('hidden');
+        });
+      }
+
+      lucide.createIcons();
+    }
+
+    // Renderizar Grelha de Itens
+    function renderItems() {
+      const list = AppState.currentList;
+      if (!list) return;
+
+      const items = list.items || [];
+      const filter = AppState.activeBudgetFilter;
+
+      // Filtragem por orçamento
+      const filtered = items.filter(item => {
+        if (filter === 'all') return true;
+        return item.budgetCategory === filter;
+      });
+
+      document.getElementById('items-count-label').textContent = `${filtered.length} de ${items.length} desejos`;
+
+      const grid = document.getElementById('items-grid');
+      const emptyState = document.getElementById('empty-state');
+
+      if (filtered.length === 0) {
+        grid.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      const myBrowserId = getBrowserGuestId();
+
+      grid.innerHTML = filtered.map(item => {
+        const isReserved = !AppState.isOwner && AppState.reservations && AppState.reservations[item.id];
+        const reservationInfo = isReserved ? AppState.reservations[item.id] : null;
+        const isReservedByMe = isReserved && reservationInfo && reservationInfo.guestBrowserId === myBrowserId;
+
+        // Imagem ou Placeholder
+        const imageMarkup = item.image 
+          ? `<div onclick="handleOpenImageModal('${item.id}')" class="cursor-pointer relative overflow-hidden group/img h-48 w-full bg-slate-100 flex items-center justify-center" title="Clica para ver a foto completa">
+              <img src="${item.image}" alt="${escapeHtml(item.title)}" class="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-300">
+              <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                <span class="px-3 py-1.5 rounded-full bg-slate-900/80 backdrop-blur-xs text-white text-xs font-semibold flex items-center gap-1.5 shadow-md transform translate-y-2 group-hover/img:translate-y-0 transition-transform">
+                  <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i>
+                  <span>Ver foto completa</span>
+                </span>
+              </div>
+             </div>`
+          : `<div class="w-full h-48 bg-gradient-to-tr from-slate-100 to-slate-200 flex flex-col items-center justify-center text-slate-400 gap-1">
+              <i data-lucide="gift" class="w-8 h-8 opacity-60"></i>
+              <span class="text-[11px] font-medium">Sem foto</span>
+             </div>`;
+
+        // Badge de Categoria de Preço
+        const budgetLabels = {
+          under20: 'Até 20€',
+          '20to50': '20€ - 50€',
+          '50to100': '50€ - 100€',
+          over100: 'Mais de 100€'
+        };
+
+        // Ações: Se Dono vs Se Convidado
+        let actionsMarkup = '';
+
+        if (AppState.isOwner) {
+          // O Dono tem botões de editar e apagar. NUNCA vê reservas!
+          actionsMarkup = `
+            <div class="flex items-center gap-2 pt-3 border-t border-slate-100">
+              <button onclick="handleEditItem('${item.id}')" class="flex-1 py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors flex items-center justify-center gap-1.5">
+                <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                <span>Editar</span>
+              </button>
+              <button onclick="handleDeleteItem('${item.id}')" class="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors" title="Apagar Desejo">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
+          `;
+        } else {
+          // Convidado: Botão de Reserva ou indicação de Reservado
+          if (isReserved) {
+            if (isReservedByMe) {
+              actionsMarkup = `
+                <div class="pt-3 border-t border-slate-100 space-y-2">
+                  <div class="w-full py-2 px-3 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold flex items-center justify-between">
+                    <span class="flex items-center gap-1.5"><i data-lucide="check" class="w-4 h-4 text-emerald-600"></i> Reservado por ti</span>
+                    <button onclick="handleCancelReservation('${item.id}')" class="text-rose-600 hover:text-rose-800 hover:underline text-[11px] font-bold">
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              `;
+            } else {
+              actionsMarkup = `
+                <div class="pt-3 border-t border-slate-100">
+                  <div class="w-full py-2.5 px-3 rounded-xl bg-slate-100 text-slate-500 text-xs font-medium flex items-center justify-center gap-1.5">
+                    <i data-lucide="lock" class="w-3.5 h-3.5"></i>
+                    <span>Reservado por ${escapeHtml(reservationInfo.reservedBy || 'outro amigo')}</span>
+                  </div>
+                </div>
+              `;
+            }
+          } else {
+            actionsMarkup = `
+              <div class="pt-3 border-t border-slate-100">
+                <button onclick="handleOpenReserveModal('${item.id}')" class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-sm shadow-emerald-600/20 active:scale-95 transition-all flex items-center justify-center gap-1.5">
+                  <i data-lucide="gift" class="w-4 h-4"></i>
+                  <span>Reservar Oferta</span>
+                </button>
+              </div>
+            `;
+          }
+        }
+
+        return `
+          <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden group">
+            <div>
+              <div class="relative overflow-hidden bg-slate-100">
+                ${imageMarkup}
+                <div class="absolute top-2.5 right-2.5">
+                  <span class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white/90 backdrop-blur-xs text-slate-800 shadow-xs">
+                    ${budgetLabels[item.budgetCategory] || 'Geral'}
+                  </span>
+                </div>
+                ${item.url ? `
+                  <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="absolute bottom-2.5 right-2.5 p-2 rounded-lg bg-white/95 text-slate-700 hover:text-brand-600 shadow-xs hover:shadow-sm transition-all" title="Ver na Loja">
+                    <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                  </a>
+                ` : ''}
+              </div>
+
+              <div class="p-4 space-y-2">
+                <div class="flex items-start justify-between gap-2">
+                  <h4 class="font-bold text-slate-900 text-base leading-snug line-clamp-2">${escapeHtml(item.title)}</h4>
+                </div>
+
+                <div class="flex items-baseline gap-1">
+                  <span class="text-lg font-extrabold text-brand-600 tracking-tight">${Number(item.price).toFixed(2)}€</span>
+                  <span class="text-[11px] text-slate-400 font-medium">aprox.</span>
+                </div>
+
+                ${item.notes ? `
+                  <p class="text-xs text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-100/80 leading-relaxed">${escapeHtml(item.notes)}</p>
+                ` : ''}
+              </div>
+            </div>
+
+            <div class="p-4 pt-0">
+              ${actionsMarkup}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    // Renderizar Listas Recentes no Ecrã Inicial
+    function renderRecentLists() {
+      const recents = getRecentLists();
+      const container = document.getElementById('recent-lists-container');
+      const section = document.getElementById('recent-lists-section');
+
+      if (recents.length === 0) {
+        section.classList.add('hidden');
+        return;
+      }
+
+      section.classList.remove('hidden');
+      const ownedPins = getOwnedListPins();
+
+      container.innerHTML = recents.map(r => `
+        <div onclick="loadList('${r.id}')" class="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/60 cursor-pointer flex items-center justify-between transition-colors">
+          <div class="flex items-center gap-2">
+            <i data-lucide="gift" class="w-4 h-4 text-brand-600"></i>
+            <span class="text-xs font-semibold text-slate-800">${escapeHtml(r.title)}</span>
+          </div>
+          ${ownedPins[r.id] ? `<span class="text-[10px] font-bold text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded-md">Dono 👑</span>` : ''}
+        </div>
+      `).join('');
+
+      lucide.createIcons({ root: container });
+    }
+
+    // Utilitário para escapar HTML (Prevenção XSS)
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // ==========================================
+    // 8. EVENTOS & INTERAÇÕES DO UTILIZADOR
+    // ==========================================
+
+    // Auto-cálculo da categoria de orçamento ao mudar o preço
+    document.getElementById('item-price').addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      if (isNaN(val)) return;
+      const budgetSelect = document.getElementById('item-budget');
+      if (val <= 20) budgetSelect.value = 'under20';
+      else if (val <= 50) budgetSelect.value = '20to50';
+      else if (val <= 100) budgetSelect.value = '50to100';
+      else budgetSelect.value = 'over100';
+    });
+
+    // Upload de Imagem do Telemóvel / PC
+    document.getElementById('item-file-input').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      try {
+        showToast("A processar e comprimir foto...", 'info');
+        const compressedBase64 = await compressImageFile(file, 600, 600, 0.75);
+        AppState.tempImageData = compressedBase64;
+        document.getElementById('item-image-url').value = '';
+        showImagePreview(compressedBase64);
+        showToast("Foto pronta!", 'success');
+      } catch (err) {
+        console.error(err);
+        showToast("Erro ao processar imagem.", 'error');
+      }
+    });
+
+    // URL de Imagem colado
+    document.getElementById('item-image-url').addEventListener('input', (e) => {
+      const url = e.target.value.trim();
+      if (url) {
+        AppState.tempImageData = url;
+        showImagePreview(url);
+      } else {
+        hideImagePreview();
+      }
+    });
+
+    // Remover Preview
+    document.getElementById('btn-remove-preview').addEventListener('click', () => {
+      hideImagePreview();
+    });
+
+    function showImagePreview(src) {
+      const wrapper = document.getElementById('image-preview-wrapper');
+      const img = document.getElementById('image-preview');
+      img.src = src;
+      wrapper.classList.remove('hidden');
+      lucide.createIcons({ root: wrapper });
+    }
+
+    function hideImagePreview() {
+      const wrapper = document.getElementById('image-preview-wrapper');
+      const img = document.getElementById('image-preview');
+      img.src = '';
+      AppState.tempImageData = '';
+      document.getElementById('item-file-input').value = '';
+      document.getElementById('item-image-url').value = '';
+      wrapper.classList.add('hidden');
+    }
+
+    // Formulário de Criar Lista
+    document.getElementById('form-create-list').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const title = document.getElementById('create-title').value.trim();
+      const desc = document.getElementById('create-desc').value.trim();
+      const pin = document.getElementById('create-pin').value.trim();
+
+      if (!title || !pin) {
+        showToast("Por favor preenche o nome da lista e o PIN.", 'warning');
+        return;
+      }
+
+      try {
+        const id = await StorageService.createList(title, desc, pin);
+        showToast("Lista criada com sucesso!", 'success');
+        loadList(id);
+      } catch (err) {
+        showToast("Erro ao criar lista: " + err.message, 'error');
+      }
+    });
+
+    // Formulário de Abrir Lista
+    document.getElementById('form-open-list').addEventListener('submit', (e) => {
+      e.preventDefault();
+      let input = document.getElementById('open-code').value.trim();
+      if (!input) return;
+
+      // Se for um link completo com ?list=ID
+      if (input.includes('?list=')) {
+        try {
+          const url = new URL(input);
+          input = url.searchParams.get('list') || input;
+        } catch (e) {
+          const match = input.match(/list=([^&]+)/);
+          if (match) input = match[1];
+        }
+      }
+
+      loadList(input);
+    });
+
+    // Abas de Orçamento
+    document.querySelectorAll('.budget-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.budget-tab-btn').forEach(b => {
+          b.className = "budget-tab-btn px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap bg-white text-slate-600 border border-slate-200 hover:bg-slate-50";
+        });
+        btn.className = "budget-tab-btn px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap bg-brand-600 text-white shadow-xs";
+        AppState.activeBudgetFilter = btn.dataset.budget;
+        renderItems();
+      });
+    });
+
+    // Abrir Modal de Adicionar Item
+    document.getElementById('btn-open-add-modal').addEventListener('click', () => {
+      document.getElementById('form-item').reset();
+      document.getElementById('item-edit-id').value = '';
+      document.getElementById('modal-item-title').textContent = "Adicionar Desejo";
+      hideImagePreview();
+      document.getElementById('modal-item').classList.remove('hidden');
+    });
+
+    // Gravar Item (Adicionar ou Editar)
+    document.getElementById('form-item').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('item-edit-id').value || ('item_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6));
+      const title = document.getElementById('item-title').value.trim();
+      const price = parseFloat(document.getElementById('item-price').value) || 0;
+      const budgetCategory = document.getElementById('item-budget').value;
+      const url = document.getElementById('item-url').value.trim();
+      const notes = document.getElementById('item-notes').value.trim();
+      const image = AppState.tempImageData;
+
+      const item = {
+        id,
+        title,
+        price,
+        budgetCategory,
+        url,
+        notes,
+        image,
+        updatedAt: new Date().toISOString()
+      };
+
+      try {
+        await StorageService.saveItem(AppState.currentListId, item);
+        document.getElementById('modal-item').classList.add('hidden');
+        showToast("Desejo guardado com sucesso!", 'success');
+      } catch (err) {
+        showToast("Erro ao guardar item: " + err.message, 'error');
+      }
+    });
+
+    // Editar Item
+    window.handleEditItem = function(itemId) {
+      const item = (AppState.currentList.items || []).find(i => i.id === itemId);
+      if (!item) return;
+
+      document.getElementById('item-edit-id').value = item.id;
+      document.getElementById('item-title').value = item.title;
+      document.getElementById('item-price').value = item.price;
+      document.getElementById('item-budget').value = item.budgetCategory;
+      document.getElementById('item-url').value = item.url || '';
+      document.getElementById('item-notes').value = item.notes || '';
+      document.getElementById('modal-item-title').textContent = "Editar Desejo";
+
+      if (item.image) {
+        AppState.tempImageData = item.image;
+        showImagePreview(item.image);
+      } else {
+        hideImagePreview();
+      }
+
+      document.getElementById('modal-item').classList.remove('hidden');
+    };
+
+    // Apagar Item
+    window.handleDeleteItem = async function(itemId) {
+      if (!confirm("Tens a certeza de que queres remover este desejo da lista?")) return;
+      try {
+        await StorageService.deleteItem(AppState.currentListId, itemId);
+        showToast("Desejo removido.", 'info');
+      } catch (err) {
+        showToast("Erro ao apagar: " + err.message, 'error');
+      }
+    };
+
+    // Abrir Modal de Reserva (Convidado)
+    window.handleOpenReserveModal = function(itemId) {
+      const item = (AppState.currentList.items || []).find(i => i.id === itemId);
+      if (!item) return;
+
+      document.getElementById('reserve-item-id').value = item.id;
+      document.getElementById('reserve-item-title').textContent = item.title;
+      document.getElementById('reserve-item-price').textContent = `${Number(item.price).toFixed(2)}€`;
+      document.getElementById('reserve-name').value = '';
+      document.getElementById('modal-reserve').classList.remove('hidden');
+    };
+
+    // Confirmar Reserva
+    document.getElementById('form-reserve').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const itemId = document.getElementById('reserve-item-id').value;
+      const name = document.getElementById('reserve-name').value;
+
+      try {
+        await StorageService.reserveItem(AppState.currentListId, itemId, name);
+        document.getElementById('modal-reserve').classList.add('hidden');
+        showToast("Prenda reservada com sucesso! O dono não saberá.", 'success');
+      } catch (err) {
+        showToast("Erro ao reservar: " + err.message, 'error');
+      }
+    });
+
+    // Cancelar Reserva
+    window.handleCancelReservation = async function(itemId) {
+      if (!confirm("Queres cancelar a tua reserva desta prenda?")) return;
+      try {
+        await StorageService.cancelReservation(AppState.currentListId, itemId);
+        showToast("Reserva cancelada.", 'info');
+      } catch (err) {
+        showToast("Erro ao cancelar: " + err.message, 'error');
+      }
+    };
+
+    // Desbloquear Modo Dono via PIN
+    document.getElementById('form-unlock').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const enteredPin = document.getElementById('unlock-pin').value.trim();
+      const list = AppState.currentList;
+
+      if (!list) return;
+
+      if (enteredPin === list.pin) {
+        saveOwnedListPin(list.id, enteredPin);
+        AppState.isOwner = true;
+        document.getElementById('modal-unlock').classList.add('hidden');
+        showToast("Modo Dono desbloqueado com sucesso! 👑", 'success');
+        loadList(list.id);
+      } else {
+        showToast("PIN incorreto. Tenta novamente.", 'error');
+      }
+    });
+
+    // Copiar Link de Partilha
+    document.getElementById('btn-share-list').addEventListener('click', () => {
+      const shareUrl = `${window.location.origin}${window.location.pathname}?list=${AppState.currentListId}`;
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        showToast("Link copiado para a área de transferência! Partilha com amigos.", 'success');
+      }).catch(() => {
+        prompt("Copia o link abaixo para partilhar:", shareUrl);
+      });
+    });
+
+    // Abrir Modal de Visualização da Foto Completa (Lightbox)
+    window.handleOpenImageModal = function(itemId) {
+      const item = (AppState.currentList.items || []).find(i => i.id === itemId);
+      if (!item || !item.image) return;
+
+      document.getElementById('lightbox-img').src = item.image;
+      document.getElementById('lightbox-caption').textContent = item.title;
+      document.getElementById('lightbox-price').textContent = `${Number(item.price).toFixed(2)}€ (aprox.)`;
+      document.getElementById('modal-image-lightbox').classList.remove('hidden');
+      lucide.createIcons();
+    };
+
+    // Fechar Modais pelos botões .btn-close-modal
+    document.querySelectorAll('.btn-close-modal').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#modal-item, #modal-reserve, #modal-unlock, #modal-image-lightbox').forEach(m => m.classList.add('hidden'));
+      });
+    });
+
+    // Fechar o Lightbox ao clicar no fundo escuro
+    document.getElementById('modal-image-lightbox').addEventListener('click', (e) => {
+      if (e.target.id === 'modal-image-lightbox' || e.target.closest('.btn-close-modal')) {
+        document.getElementById('modal-image-lightbox').classList.add('hidden');
+      }
+    });
+
+    // Fechar modais ao pressionar tecla Escape
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        document.querySelectorAll('#modal-item, #modal-reserve, #modal-unlock, #modal-image-lightbox').forEach(m => m.classList.add('hidden'));
+      }
+    });
+
+    // Voltar à Home
+    document.getElementById('btn-back-home').addEventListener('click', () => {
+      switchView('home');
+    });
+
+    document.getElementById('brand-logo').addEventListener('click', (e) => {
+      e.preventDefault();
+      switchView('home');
+    });
+
+    // ==========================================
+    // 9. INICIALIZAÇÃO DA APLICAÇÃO AO CARREGAR
+    // ==========================================
+    window.addEventListener('DOMContentLoaded', () => {
+      renderRecentLists();
+
+      // Verificar se o URL traz parâmetro ?list=ID
+      const params = new URLSearchParams(window.location.search);
+      const listParam = params.get('list');
+
+      if (listParam) {
+        loadList(listParam);
+      } else {
+        switchView('home');
+      }
+    });
+
+    // Suporte para botão 'Voltar' do navegador
+    window.addEventListener('popstate', () => {
+      const params = new URLSearchParams(window.location.search);
+      const listParam = params.get('list');
+      if (listParam) loadList(listParam);
+      else switchView('home');
+    });
+  </script>
+</body>
+</html>
