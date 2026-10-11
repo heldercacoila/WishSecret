@@ -339,26 +339,36 @@
           <textarea id="item-notes" rows="2" placeholder="Ex: Tamanho M, cor preta ou cinzenta" class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 bg-slate-50/50 resize-none"></textarea>
         </div>
 
-        <!-- FOTO DO PRODUTO: UPLOAD DO TELEMOVEL/PC OU URL -->
+        <!-- FOTO DO PRODUTO: UPLOAD DO TELEMOVEL/PC, COLAR PRINT (CTRL+V) OU URL -->
         <div class="space-y-2 pt-2 border-t border-slate-100">
-          <label class="block text-xs font-semibold text-slate-700">Foto do Produto (Telemóvel, Computador ou URL)</label>
-          
-          <div class="flex items-center gap-2">
-            <label for="item-file-input" class="cursor-pointer px-3.5 py-2 rounded-xl bg-brand-50 text-brand-700 hover:bg-brand-100 font-semibold text-xs transition-colors flex items-center gap-1.5 border border-brand-200">
-              <i data-lucide="camera" class="w-4 h-4"></i>
-              <span>Escolher Foto do Telemóvel / PC</span>
-            </label>
+          <label class="block text-xs font-semibold text-slate-700">Foto do Produto (Telemóvel, Computador, Print ou Link)</label>
+
+          <!-- Zona de Drag & Drop e Colar Printscreen (Ctrl + V) -->
+          <div id="image-dropzone" class="border-2 border-dashed border-slate-200 hover:border-brand-400 bg-slate-50/60 hover:bg-brand-50/20 rounded-2xl p-4 text-center transition-all cursor-pointer relative group">
             <input type="file" id="item-file-input" accept="image/*" class="hidden">
-            <span class="text-xs text-slate-400">ou</span>
+            <div class="flex flex-col items-center justify-center gap-1.5 pointer-events-none">
+              <div class="w-10 h-10 rounded-xl bg-brand-100/70 text-brand-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <i data-lucide="image-plus" class="w-5 h-5"></i>
+              </div>
+              <p class="text-xs font-semibold text-slate-700">
+                <span class="text-brand-600 font-bold hover:underline">Escolhe uma foto</span> ou cola um printscreen (<kbd class="px-1.5 py-0.5 rounded-md bg-white border border-slate-200 text-[10px] font-mono shadow-xs text-slate-600">Ctrl + V</kbd>)
+              </p>
+              <p class="text-[11px] text-slate-400">Podes arrastar uma foto ou tirar um print com recorte e colar aqui diretamente</p>
+            </div>
           </div>
 
-          <input type="url" id="item-image-url" placeholder="Colar link de imagem da web (URL)" class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 bg-slate-50/50">
+          <!-- Campo Alternativo de URL -->
+          <div class="relative">
+            <input type="url" id="item-image-url" placeholder="Ou cola um link de imagem da web (URL)..." class="w-full pl-8 pr-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 bg-slate-50/50">
+            <i data-lucide="link" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none"></i>
+          </div>
 
           <!-- Image Preview Area -->
           <div id="image-preview-wrapper" class="hidden relative mt-2 w-full h-36 bg-slate-100 rounded-xl overflow-hidden border border-slate-200 flex items-center justify-center">
             <img id="image-preview" src="" alt="Pré-visualização" class="h-full w-full object-contain">
-            <button type="button" id="btn-remove-preview" class="absolute top-2 right-2 p-1.5 rounded-full bg-slate-900/70 text-white hover:bg-slate-900 text-xs transition-colors">
+            <button type="button" id="btn-remove-preview" class="absolute top-2 right-2 p-1.5 rounded-full bg-slate-900/75 text-white hover:bg-slate-900 text-xs transition-colors flex items-center gap-1 shadow-md">
               <i data-lucide="trash-2" class="w-4 h-4"></i>
+              <span class="text-[10px] font-medium pr-1">Remover</span>
             </button>
           </div>
         </div>
@@ -1195,21 +1205,75 @@
       else budgetSelect.value = 'over100';
     });
 
-    // Upload de Imagem do Telemóvel / PC
-    document.getElementById('item-file-input').addEventListener('change', async (e) => {
-      const file = e.target.files[0];
+    // Função unificada para processar ficheiro de imagem (Ficheiro, Drag&Drop ou Printscreen Ctrl+V)
+    async function processImageBlob(file, successMsg = "Foto pronta!") {
       if (!file) return;
-
       try {
-        showToast("A processar e comprimir foto...", 'info');
+        showToast("A processar e comprimir imagem...", 'info');
         const compressedBase64 = await compressImageFile(file, 600, 600, 0.75);
         AppState.tempImageData = compressedBase64;
         document.getElementById('item-image-url').value = '';
         showImagePreview(compressedBase64);
-        showToast("Foto pronta!", 'success');
+        showToast(successMsg, 'success');
       } catch (err) {
         console.error(err);
         showToast("Erro ao processar imagem.", 'error');
+      }
+    }
+
+    // Clique na dropzone para abrir o explorador de ficheiros
+    const dropzone = document.getElementById('image-dropzone');
+    dropzone.addEventListener('click', () => {
+      document.getElementById('item-file-input').click();
+    });
+
+    // Upload via Explorador de Ficheiros
+    document.getElementById('item-file-input').addEventListener('change', (e) => {
+      processImageBlob(e.target.files[0], "Foto carregada com sucesso!");
+    });
+
+    // Drag & Drop na Dropzone
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.add('border-brand-500', 'bg-brand-50/70');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.remove('border-brand-500', 'bg-brand-50/70');
+      });
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const files = e.dataTransfer?.files;
+      if (files && files[0] && files[0].type.startsWith('image/')) {
+        processImageBlob(files[0], "Foto arrastada com sucesso!");
+      }
+    });
+
+    // Colar Printscreen direto da Área de Transferência (Ctrl + V)
+    window.addEventListener('paste', (e) => {
+      const modalItem = document.getElementById('modal-item');
+      if (modalItem.classList.contains('hidden')) return; // Só atua se o modal estiver aberto
+
+      const items = (e.clipboardData || window.clipboardData)?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          e.preventDefault();
+          const blob = items[i].getAsFile();
+          if (blob) {
+            processImageBlob(blob, "Printscreen colado com sucesso! 📋");
+          }
+          break;
+        }
       }
     });
 
