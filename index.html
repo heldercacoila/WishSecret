@@ -185,6 +185,9 @@
           <div>
             <div class="flex items-center gap-2">
               <h2 id="list-title" class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">Carregando lista...</h2>
+              <button id="btn-edit-list-name" class="hidden p-1.5 rounded-xl text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors shadow-2xs" title="Mudar nome e mensagem da lista">
+                <i data-lucide="edit-3" class="w-4 h-4"></i>
+              </button>
               <span id="role-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold"></span>
             </div>
             <p id="list-description" class="text-xs sm:text-sm text-slate-500 line-clamp-1"></p>
@@ -214,10 +217,16 @@
             Adiciona, edita ou elimina os teus desejos. Lembra-te: o estado de reserva fica oculto para manter a tua surpresa!
           </p>
         </div>
-        <button id="btn-open-add-modal" class="whitespace-nowrap px-4 py-2.5 rounded-xl bg-white text-brand-700 hover:bg-brand-50 font-bold text-xs shadow-sm transition-all flex items-center gap-2 active:scale-95">
-          <i data-lucide="plus" class="w-4 h-4"></i>
-          <span>Adicionar Desejo</span>
-        </button>
+        <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          <button id="btn-banner-edit-list" class="whitespace-nowrap px-3.5 py-2.5 rounded-xl bg-brand-700/80 hover:bg-brand-700 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-1.5 active:scale-95 border border-brand-400/40">
+            <i data-lucide="edit-3" class="w-4 h-4"></i>
+            <span>Mudar Nome da Lista</span>
+          </button>
+          <button id="btn-open-add-modal" class="whitespace-nowrap px-4 py-2.5 rounded-xl bg-white text-brand-700 hover:bg-brand-50 font-bold text-xs shadow-sm transition-all flex items-center gap-2 active:scale-95">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>Adicionar Desejo</span>
+          </button>
+        </div>
       </div>
 
       <!-- Guest Info Banner (Visible only for Guest) -->
@@ -509,6 +518,48 @@
     </div>
   </div>
 
+  <!-- MODAL: EDITAR DETALHES DA LISTA (DONO) -->
+  <div id="modal-edit-list" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-100 space-y-5">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center">
+            <i data-lucide="edit-3" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-slate-900 leading-tight">Mudar Nome da Lista</h3>
+            <span class="text-[11px] text-slate-400">Personaliza o título e mensagem da tua lista</span>
+          </div>
+        </div>
+        <button type="button" class="btn-close-modal p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="form-edit-list" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1" for="edit-list-title">Nome da Lista *</label>
+          <input type="text" id="edit-list-title" required placeholder="Ex: Aniversário do Helder 2026" class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 bg-slate-50/50">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1" for="edit-list-desc">Descrição / Mensagem para os Amigos</label>
+          <textarea id="edit-list-desc" rows="3" placeholder="Ex: Ideias para quem me quiser oferecer uma prenda!" class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 bg-slate-50/50 resize-none"></textarea>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+          <button type="button" class="btn-close-modal px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 font-semibold text-xs transition-colors">
+            Cancelar
+          </button>
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs shadow-sm shadow-brand-500/25 transition-all flex items-center gap-1.5">
+            <i data-lucide="check" class="w-4 h-4"></i>
+            <span>Guardar Alterações</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- ================= SCRIPTS ================= -->
   <script>
     // ==========================================
@@ -705,6 +756,34 @@
 
         saveOwnedListPin(id, pin);
         return id;
+      },
+
+      // Atualizar Detalhes da Lista (Nome e Descrição - Dono)
+      async updateListDetails(listId, title, description) {
+        if (isCloudReady) {
+          try {
+            await db.collection('lists').doc(listId).update({
+              title,
+              description: description || ''
+            });
+            return;
+          } catch (err) {
+            console.warn("Erro ao atualizar detalhes no Firestore, fallback local:", err);
+          }
+        }
+
+        // Fallback localStorage
+        const local = localStorage.getItem('wishlist_' + listId);
+        if (local) {
+          const data = JSON.parse(local);
+          data.title = title;
+          data.description = description || '';
+          localStorage.setItem('wishlist_' + listId, JSON.stringify(data));
+          if (AppState.currentListId === listId) {
+            AppState.currentList = data;
+            renderListHeader();
+          }
+        }
       },
 
       // Subscrição em Tempo Real da Lista
@@ -974,8 +1053,11 @@
       const ownerBanner = document.getElementById('owner-banner');
       const guestBanner = document.getElementById('guest-banner');
       const ownerActionContainer = document.getElementById('owner-action-container');
+      const btnEditListName = document.getElementById('btn-edit-list-name');
 
       if (AppState.isOwner) {
+        if (btnEditListName) btnEditListName.classList.remove('hidden');
+
         roleBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-100 text-purple-700 border border-purple-200";
         roleBadge.textContent = "Modo Dono 👑";
 
@@ -1000,6 +1082,8 @@
         });
 
       } else {
+        if (btnEditListName) btnEditListName.classList.add('hidden');
+
         roleBadge.className = "px-3 py-1 rounded-full text-xs font-extrabold bg-amber-500 text-white shadow-xs flex items-center gap-1.5";
         roleBadge.innerHTML = `<i data-lucide="gift" class="w-3.5 h-3.5 text-white"></i><span>Modo Convidado 🎁</span>`;
 
@@ -1661,10 +1745,44 @@
       lucide.createIcons();
     };
 
+    // Abrir Modal de Editar Nome da Lista (Dono)
+    function openEditListModal() {
+      if (!AppState.currentList) return;
+      document.getElementById('edit-list-title').value = AppState.currentList.title || '';
+      document.getElementById('edit-list-desc').value = AppState.currentList.description || '';
+      document.getElementById('modal-edit-list').classList.remove('hidden');
+    }
+
+    document.getElementById('btn-edit-list-name')?.addEventListener('click', openEditListModal);
+    document.getElementById('btn-banner-edit-list')?.addEventListener('click', openEditListModal);
+
+    // Gravar Alteração de Nome da Lista
+    document.getElementById('form-edit-list').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const newTitle = document.getElementById('edit-list-title').value.trim();
+      const newDesc = document.getElementById('edit-list-desc').value.trim();
+
+      if (!newTitle) {
+        showToast("O nome da lista não pode estar vazio.", 'warning');
+        return;
+      }
+
+      try {
+        await StorageService.updateListDetails(AppState.currentListId, newTitle, newDesc);
+        document.getElementById('modal-edit-list').classList.add('hidden');
+        document.getElementById('list-title').textContent = newTitle;
+        document.getElementById('list-description').textContent = newDesc || 'Lista de desejos partilhada';
+        addRecentList(AppState.currentListId, newTitle);
+        showToast("Nome da lista atualizado com sucesso! ✨", 'success');
+      } catch (err) {
+        showToast("Erro ao atualizar lista: " + err.message, 'error');
+      }
+    });
+
     // Fechar Modais pelos botões .btn-close-modal
     document.querySelectorAll('.btn-close-modal').forEach(btn => {
       btn.addEventListener('click', () => {
-        document.querySelectorAll('#modal-item, #modal-reserve, #modal-unlock, #modal-image-lightbox').forEach(m => m.classList.add('hidden'));
+        document.querySelectorAll('#modal-item, #modal-reserve, #modal-unlock, #modal-image-lightbox, #modal-edit-list').forEach(m => m.classList.add('hidden'));
       });
     });
 
@@ -1678,7 +1796,7 @@
     // Fechar modais ao pressionar tecla Escape
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
-        document.querySelectorAll('#modal-item, #modal-reserve, #modal-unlock, #modal-image-lightbox').forEach(m => m.classList.add('hidden'));
+        document.querySelectorAll('#modal-item, #modal-reserve, #modal-unlock, #modal-image-lightbox, #modal-edit-list').forEach(m => m.classList.add('hidden'));
       }
     });
 
